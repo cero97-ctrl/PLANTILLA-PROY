@@ -29,11 +29,24 @@ steps:
       - name: "local_repo_path"
         description: "Ruta local al directorio donde se clonó el repositorio."
         value: ".tmp/repo_{{run_id}}"
+  - step: 2
+    name: "List Directory Structure"
+    description: "Genera un archivo de texto con la estructura de archivos del repositorio clonado."
+    script_to_invoke: "execution/list_directory_contents.py"
+    inputs:
+      - name: "--root-dir"
+        value: "{{local_repo_path}}"
+      - name: "--output-file"
+        value: ".tmp/structure_{{run_id}}.txt"
+    outputs:
+      - name: "structure_file_path"
+        description: "Ruta al archivo de texto generado."
+        value: ".tmp/structure_{{run_id}}.txt"
 
 expected_outputs:
   - name: "final_deliverable"
-    description: "Un repositorio clonado en el directorio temporal `.tmp/`."
-    location: ".tmp/repo_{{run_id}}"
+    description: "Un archivo de texto con la estructura del repositorio clonado."
+    location: ".tmp/structure_{{run_id}}.txt"
 
 edge_cases:
   - case: "La URL del repositorio es inválida o el repositorio no existe."
