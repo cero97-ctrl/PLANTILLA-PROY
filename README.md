@@ -23,6 +23,11 @@ Para garantizar la reproducibilidad y evitar conflictos de dependencias, se reco
     pip install -r requirements.txt
     ```
 
+4.  **Visualizar entornos disponibles:**
+    ```bash
+    conda env list
+    ```
+
 ## 3-Layer Architecture
 
 El sistema utiliza una arquitectura de **3 capas** para separar responsabilidades y maximizar la fiabilidad.Los LLM son probabilísticos, mientras que la lógica de negocio suele ser determinista. Esta estructura equilibra ambos enfoques.
