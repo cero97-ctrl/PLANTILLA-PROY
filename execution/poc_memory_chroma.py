@@ -41,7 +41,7 @@ def main():
     try:
         # PersistentClient saves data to disk so it survives between runs
         client = chromadb.PersistentClient(path=db_path)
-        
+
         # Get or create the collection
         collection = client.get_or_create_collection(name=collection_name)
     except Exception as e:
@@ -56,7 +56,7 @@ def main():
         "Mem0 es una herramienta que gestiona la memoria de LLMs.",
         "ChromaDB es una base de datos vectorial open source que corre localmente."
     ]
-    
+
     # IDs must be unique strings
     ids = [f"mem_{i}" for i in range(len(sample_memories))]
     metadatas = [{"source": "poc_script", "type": "fact"} for _ in sample_memories]
@@ -74,11 +74,11 @@ def main():
     # --- Simulation: Querying ---
     # We search for something semantically related, not necessarily exact keywords
     query_text = "herramientas de base de datos locales"
-    
+
     try:
         results = collection.query(
             query_texts=[query_text],
-            n_results=2 # Get top 2 matches
+            n_results=2  # Get top 2 matches
         )
     except Exception as e:
         print_error("Query Error: Failed to query the database.", str(e), 4)
@@ -92,6 +92,7 @@ def main():
     }
     print(json.dumps(output_data, indent=2))
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

@@ -18,6 +18,6 @@ expected_outputs:
   - "El desarrollador conoce la ubicación de los archivos de configuración y memoria."
 edge_cases:
   - case: "Archivo .gemini/instructions.md no encontrado"
-    protocol: "Utilizar README.md como fuente de verdad alternativa."
+    protocol: "Utilizar .gemini/AGENT_FRAMEWORK.md como fuente de verdad alternativa."
   - case: "Dudas sobre seguridad"
     protocol: "Enfatizar que las credenciales van en .env y nunca se suben al repositorio."

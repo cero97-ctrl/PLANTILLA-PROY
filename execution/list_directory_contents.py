@@ -3,6 +3,7 @@ import json
 import sys
 from pathlib import Path
 
+
 def print_error(message: str, details: str, exit_code: int):
     """Prints a structured error message to stderr and exits."""
     error_data = {
@@ -13,36 +14,38 @@ def print_error(message: str, details: str, exit_code: int):
     print(json.dumps(error_data, indent=2), file=sys.stderr)
     sys.exit(exit_code)
 
+
 def generate_tree_string(path: Path, prefix: str = "") -> str:
     """Recursively generates a tree structure string."""
     output = ""
     try:
         # Get all items
         items = list(path.iterdir())
-        
+
         # Filter out .git directory as it is not relevant for content structure
         items = [i for i in items if i.name != ".git"]
-        
+
         # Sort: directories first, then files, alphabetically for deterministic output
         items.sort(key=lambda x: (not x.is_dir(), x.name.lower()))
-        
+
         count = len(items)
         for i, item in enumerate(items):
             is_last = (i == count - 1)
             connector = "└── " if is_last else "├── "
-            
+
             output += f"{prefix}{connector}{item.name}\n"
-            
+
             if item.is_dir():
                 extension = "    " if is_last else "│   "
                 output += generate_tree_string(item, prefix + extension)
-                
+
     except PermissionError:
         output += f"{prefix}└── [Permission Denied]\n"
     except Exception as e:
         output += f"{prefix}└── [Error: {str(e)}]\n"
-        
+
     return output
+
 
 def main():
     """
@@ -62,7 +65,7 @@ def main():
     # --- Validation ---
     if not root_dir.exists():
         print_error(f"Root directory not found: {root_dir}", "", 1)
-    
+
     if not root_dir.is_dir():
         print_error(f"Path is not a directory: {root_dir}", "", 2)
 
@@ -73,10 +76,10 @@ def main():
 
         header = f"Directory structure for: {root_dir.resolve()}\n"
         header += "=" * 40 + "\n"
-        
+
         tree_content = generate_tree_string(root_dir)
         full_content = header + tree_content
-        
+
         output_file.write_text(full_content, encoding="utf-8")
 
         # --- Success Output ---
@@ -89,6 +92,7 @@ def main():
 
     except Exception as e:
         print_error("An unexpected error occurred while generating the structure.", str(e), 3)
+
 
 if __name__ == "__main__":
     main()

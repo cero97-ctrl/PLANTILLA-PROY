@@ -9,6 +9,7 @@ except ImportError:
     print("Error: Missing 'chromadb'.", file=sys.stderr)
     sys.exit(10)
 
+
 def main():
     """
     Queries the ChromaDB vector store for semantically similar memories.
@@ -42,7 +43,7 @@ def main():
             doc = results['documents'][0][i]
             meta = results['metadatas'][0][i] if results['metadatas'] else {}
             dist = results['distances'][0][i] if results['distances'] else 0
-            
+
             formatted_results.append({
                 "content": doc,
                 "metadata": meta,
@@ -54,6 +55,7 @@ def main():
         "query": args.query,
         "results": formatted_results
     }, indent=2))
+
 
 if __name__ == "__main__":
     main()

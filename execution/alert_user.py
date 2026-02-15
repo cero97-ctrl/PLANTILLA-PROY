@@ -2,6 +2,7 @@
 import sys
 import time
 
+
 def main():
     """
     Emite una alerta audible y visual para notificar al usuario.
@@ -12,7 +13,7 @@ def main():
         sys.exit(1)
 
     alert_type = sys.argv[1].lower()
-    
+
     # Feedback visual
     icons = {"success": "✅", "waiting": "⏳", "error": "❌"}
     icon = icons.get(alert_type, "🔔")
@@ -34,7 +35,8 @@ def main():
                 print("\a", end="", flush=True)
                 time.sleep(0.2)
     except Exception:
-        pass # Fallback silencioso si falla el audio
+        pass  # Fallback silencioso si falla el audio
+
 
 if __name__ == "__main__":
     main()

@@ -3,6 +3,7 @@ import os
 import sys
 import json
 
+
 def main():
     """
     Valida la integridad del sistema verificando que la estructura de carpetas
@@ -54,9 +55,10 @@ def main():
     # 3. Emitir resultado
     is_healthy = len(health_report["errors"]) == 0
     health_report["status"] = "ok" if is_healthy else "error"
-    
+
     print(json.dumps(health_report, indent=2))
     sys.exit(0 if is_healthy else 1)
+
 
 if __name__ == "__main__":
     main()

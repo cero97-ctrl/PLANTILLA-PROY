@@ -9,6 +9,7 @@ except ImportError:
     print("Error: Missing 'chromadb'.", file=sys.stderr)
     sys.exit(10)
 
+
 def main():
     """
     Deletes a memory from ChromaDB by its ID.
@@ -38,6 +39,7 @@ def main():
         "deleted_id": args.memory_id,
         "message": "Memory deleted successfully (if it existed)."
     }, indent=2))
+
 
 if __name__ == "__main__":
     main()

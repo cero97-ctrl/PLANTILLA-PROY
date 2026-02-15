@@ -14,6 +14,7 @@ except ImportError:
     )
     sys.exit(10)
 
+
 def print_error(message: str, details: str, exit_code: int):
     error_data = {
         "status": "error",
@@ -22,6 +23,7 @@ def print_error(message: str, details: str, exit_code: int):
     }
     print(json.dumps(error_data, indent=2), file=sys.stderr)
     sys.exit(exit_code)
+
 
 def main():
     """
@@ -43,7 +45,7 @@ def main():
     # Generate unique ID and metadata
     memory_id = str(uuid.uuid4())
     timestamp = datetime.datetime.now().isoformat()
-    
+
     metadata = {
         "category": args.category,
         "timestamp": timestamp,
@@ -67,6 +69,7 @@ def main():
     }
     print(json.dumps(output_data, indent=2))
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

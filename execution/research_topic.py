@@ -50,7 +50,7 @@ def main():
             search_gen = ddgs.text(query, max_results=max_results)
             if search_gen:
                 results = list(search_gen)
-            
+
     except Exception as e:
         print_error("Search Error: Failed to retrieve results from the search engine.", str(e), 2)
 
@@ -68,7 +68,7 @@ def main():
             title = res.get('title', 'No Title')
             href = res.get('href', 'No URL')
             body = res.get('body', 'No description available.')
-            
+
             content += f"{i}. {title}\n"
             content += f"   URL: {href}\n"
             content += f"   Summary: {body}\n"
@@ -89,6 +89,7 @@ def main():
     }
     print(json.dumps(output_data, indent=2))
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

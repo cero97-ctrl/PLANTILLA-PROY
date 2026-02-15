@@ -1,3 +1,29 @@
-.env
-.tmp/
+# Python
 __pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+agent_env/
+
+# Environment Variables
+.env
+.env.*
+
+# Framework Specific
+.tmp/
+*.log
+backups/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

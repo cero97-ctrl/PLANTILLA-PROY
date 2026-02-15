@@ -11,6 +11,7 @@ try:
 except ImportError:
     print("Warning: python-dotenv not found. Secrets will not be loaded from .env file.", file=sys.stderr)
     # Define a dummy function if dotenv is not installed
+
     def load_dotenv():
         pass
 
@@ -79,7 +80,8 @@ def main():
 
         # Post-execution validation
         if not output_dir.is_dir() or not any(output_dir.iterdir()):
-            print_error(f"Validation failed: Git clone seemed to succeed, but the output directory '{output_dir}' is empty or not a directory.", "", 4)
+            print_error(
+                f"Validation failed: Git clone seemed to succeed, but the output directory '{output_dir}' is empty or not a directory.", "", 4)
 
         # --- Success Output ---
         output_data = {"status": "success", "local_repo_path": str(output_dir)}
@@ -88,6 +90,7 @@ def main():
 
     except FileNotFoundError:
         print_error("Execution failed: 'git' command not found. Is Git installed and in your PATH?", "", 5)
+
 
 if __name__ == "__main__":
     main()

@@ -11,7 +11,7 @@ except ImportError:
         "Error: Missing required libraries. Please install them with 'pip install requests beautifulsoup4'",
         file=sys.stderr
     )
-    sys.exit(10) # Special exit code for dependency issues
+    sys.exit(10)  # Special exit code for dependency issues
 
 
 def print_error(message: str, details: str, exit_code: int):
@@ -69,7 +69,7 @@ def main():
         main_content = soup.find('main') or soup.find('article') or soup.body
 
         if not main_content:
-             print_error("Parsing Error: Could not find <body> tag in the HTML document.", "", 4)
+            print_error("Parsing Error: Could not find <body> tag in the HTML document.", "", 4)
 
         # Get text, separated by newlines, and strip leading/trailing whitespace from each line
         text_content = main_content.get_text(separator='\n', strip=True)
@@ -83,14 +83,12 @@ def main():
     except Exception as e:
         print_error("Parsing Error: An unexpected error occurred while parsing the HTML.", str(e), 4)
 
-
     # --- Writing to File ---
     try:
         output_file.parent.mkdir(parents=True, exist_ok=True)
         output_file.write_text(text_content, encoding='utf-8')
     except IOError as e:
         print_error(f"File Error: Could not write to output file '{output_file}'.", str(e), 6)
-
 
     # --- Success Output ---
     output_data = {
