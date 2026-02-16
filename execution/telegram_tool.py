@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+import os
+import sys
+import json
+import argparse
+import requests
+import time
+from dotenv import load_dotenv
+
+# Cargar entorno para obtener credenciales
+load_dotenv()
+
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+OFFSET_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".tmp", "telegram_offset.txt")
+
+def send_message(text):
+    """Envía un mensaje al chat configurado."""
+    if not TOKEN or not CHAT_ID:
+        print(json.dumps({"status": "error", "message": "Faltan credenciales TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID en .env"}))
+        sys.exit(1)
+    
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    payload = {"chat_id": CHAT_ID, "text": text, "parse_mode": "Markdown"}
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status()
+        print(json.dumps({"status": "success", "message": "Mensaje enviado."}))
+    except Exception:
+        # Si falla (común por errores de sintaxis Markdown), reintentar como texto plano
+        try:
+            payload.pop("parse_mode", None)
+            response = requests.post(url, json=payload, timeout=10)
+            response.raise_for_status()
+            print(json.dumps({"status": "success", "message": "Mensaje enviado (texto plano por error de formato)."}))
+        except Exception as e:
+            print(json.dumps({"status": "error", "message": str(e)}))
+            sys.exit(1)
+
+def check_messages():
+    """Consulta nuevos mensajes (polling) manteniendo el estado del offset."""
+    if not TOKEN:
+        print(json.dumps({"status": "error", "message": "Falta TELEGRAM_BOT_TOKEN en .env"}))
+        sys.exit(1)
+        
+    offset = 0
+    if os.path.exists(OFFSET_FILE):
+        with open(OFFSET_FILE, 'r') as f:
+            try:
+                offset = int(f.read().strip())
+            except:
+                offset = 0
+    
+    url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+    params = {"offset": offset, "limit": 10, "timeout": 5}
+    
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        messages = []
+        max_update_id = offset
+        
+        for result in data.get("result", []):
+            update_id = result["update_id"]
+            # Solo procesamos mensajes nuevos
+            if update_id >= offset:
+                max_update_id = max(max_update_id, update_id + 1)
+                
+                # Seguridad: Filtrar por CHAT_ID si está definido para ignorar extraños
+                msg_chat_id = str(result.get("message", {}).get("chat", {}).get("id", ""))
+                if CHAT_ID and msg_chat_id != str(CHAT_ID):
+                    continue
+                    
+                message = result.get("message", {})
+                text = message.get("text", "")
+                photo = message.get("photo")
+                
+                if text:
+                    messages.append(text)
+                elif photo:
+                    # Telegram envía varias resoluciones, la última es la mejor
+                    file_id = photo[-1]["file_id"]
+                    caption = message.get("caption", "") or ""
+                    # Usamos un prefijo especial para identificar fotos en el listener
+                    messages.append(f"__PHOTO__:{file_id}|||{caption}")
+        
+        # Guardar nuevo offset para no repetir mensajes
+        if max_update_id > offset:
+            os.makedirs(os.path.dirname(OFFSET_FILE), exist_ok=True)
+            with open(OFFSET_FILE, 'w') as f:
+                f.write(str(max_update_id))
+                
+        print(json.dumps({"status": "success", "messages": messages}))
+        
+    except Exception as e:
+        print(json.dumps({"status": "error", "message": str(e)}))
+        sys.exit(1)
+
+def get_chat_id():
+    """Obtiene el ID del chat del último mensaje recibido para configuración."""
+    if not TOKEN:
+        print(json.dumps({"status": "error", "message": "Falta TELEGRAM_BOT_TOKEN en .env"}))
+        sys.exit(1)
+        
+    url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+    
+    # Intentar varias veces (polling) para dar tiempo al usuario
+    for _ in range(5):
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            results = data.get("result", [])
+            if results:
+                # Obtener el último mensaje
+                last_update = results[-1]
+                chat_info = last_update.get("message", {}).get("chat", {})
+                chat_id = chat_info.get("id")
+                username = chat_info.get("username", "Desconocido")
+                
+                print(json.dumps({"status": "success", "chat_id": chat_id, "username": username, "message": "Copia este ID en tu archivo .env"}))
+                return
+            
+            time.sleep(2) # Esperar 2 segundos antes de reintentar
+            
+        except Exception as e:
+            print(json.dumps({"status": "error", "message": str(e)}))
+            sys.exit(1)
+            
+    print(json.dumps({"status": "error", "message": "No se encontraron mensajes. Asegúrate de enviar 'Hola' a tu bot (@CERO97BOT) ANTES de ejecutar esto."}))
+    sys.exit(1)
+
+def download_file(file_id, dest_path):
+    """Descarga un archivo desde los servidores de Telegram."""
+    if not TOKEN:
+        print(json.dumps({"status": "error", "message": "Falta TELEGRAM_BOT_TOKEN"}))
+        sys.exit(1)
+        
+    try:
+        # 1. Obtener la ruta del archivo
+        info_url = f"https://api.telegram.org/bot{TOKEN}/getFile"
+        res = requests.get(info_url, params={"file_id": file_id}, timeout=10)
+        res.raise_for_status()
+        file_path_remote = res.json()["result"]["file_path"]
+        
+        # 2. Descargar el contenido
+        download_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_path_remote}"
+        img_data = requests.get(download_url, timeout=20).content
+        
+        with open(dest_path, 'wb') as f:
+            f.write(img_data)
+            
+        print(json.dumps({"status": "success", "file_path": dest_path}))
+    except Exception as e:
+        print(json.dumps({"status": "error", "message": str(e)}))
+        sys.exit(1)
+
+def main():
+    parser = argparse.ArgumentParser(description="Herramienta de integración con Telegram.")
+    parser.add_argument("--action", choices=["send", "check", "get-id", "download"], required=True, help="Acción a realizar.")
+    parser.add_argument("--message", help="Mensaje a enviar (requerido para --action send).")
+    parser.add_argument("--file-id", help="ID del archivo a descargar (para --action download).")
+    parser.add_argument("--dest", help="Ruta destino (para --action download).")
+    
+    args = parser.parse_args()
+    
+    if args.action == "send":
+        send_message(args.message or "Notificación vacía")
+    elif args.action == "check":
+        check_messages()
+    elif args.action == "get-id":
+        get_chat_id()
+    elif args.action == "download":
+        if not args.file_id or not args.dest:
+            print(json.dumps({"status": "error", "message": "Faltan argumentos --file-id o --dest"}))
+            sys.exit(1)
+        download_file(args.file_id, args.dest)
+
+if __name__ == "__main__":
+    main()

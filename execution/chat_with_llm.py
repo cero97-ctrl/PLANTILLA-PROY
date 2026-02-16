@@ -15,6 +15,12 @@ try:
 except ImportError:
     genai = None
 
+# Intentar importar ChromaDB para memoria a largo plazo
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
+
 # Intentar cargar variables de entorno si python-dotenv está instalado
 try:
     from dotenv import load_dotenv, find_dotenv
@@ -40,6 +46,38 @@ def save_history(history):
     with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
         json.dump(history, f, indent=2, ensure_ascii=False)
 
+def get_memory_context(query):
+    """Busca contexto relevante en la memoria vectorial (ChromaDB)."""
+    if not chromadb:
+        print("⚠️  [RAG] ChromaDB no instalado o no importado.", file=sys.stderr)
+        return None
+        
+    try:
+        # Ruta a la base de datos (mismo path que save_memory.py)
+        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".tmp", "chroma_db")
+        
+        if not os.path.exists(db_path):
+            print(f"⚠️  [RAG] No se encontró base de datos en: {db_path}", file=sys.stderr)
+            return None
+
+        client = chromadb.PersistentClient(path=db_path)
+        collection = client.get_or_create_collection(name='agent_memory')
+        
+        results = collection.query(
+            query_texts=[query],
+            n_results=3 # Recuperar los 3 recuerdos más relevantes
+        )
+        
+        documents = results.get('documents', [[]])[0]
+        if documents:
+            preview = documents[0][:60] + "..." if len(documents[0]) > 60 else documents[0]
+            print(f"🧠 [RAG] Contexto inyectado ({len(documents)} items): '{preview}'", file=sys.stderr)
+            return "\n".join([f"- {doc}" for doc in documents])
+        else:
+            print("🧠 [RAG] No se encontraron recuerdos relevantes para esta consulta.", file=sys.stderr)
+    except Exception as e:
+        print(f"❌ [RAG] Error al consultar memoria: {e}", file=sys.stderr)
+    return None
 
 def chat_openai(messages, model="gpt-4o-mini"):
     api_key = os.getenv("OPENAI_API_KEY")
@@ -168,6 +206,17 @@ def main():
 
     history.append({"role": "user", "content": args.prompt})
 
+    # --- RAG: Inyección de Memoria ---
+    # Creamos una copia de los mensajes para enviar al LLM con el contexto inyectado,
+    # pero SIN ensuciar el historial guardado en disco.
+    messages_for_llm = [dict(msg) for msg in history] # Deep copy simple
+    
+    memory_context = get_memory_context(args.prompt)
+    if memory_context:
+        # Inyectamos el contexto en el último mensaje del usuario
+        last_msg = messages_for_llm[-1]
+        last_msg['content'] = f"CONTEXTO DE MEMORIA (Recuerdos relevantes):\n{memory_context}\n\n---\nPREGUNTA DEL USUARIO:\n{args.prompt}"
+
     # Selección automática de proveedor si no se especifica
     provider = args.provider
     if not provider:
@@ -181,11 +230,11 @@ def main():
             provider = "openai"  # Default
 
     if provider == "openai":
-        result = chat_openai(history)
+        result = chat_openai(messages_for_llm)
     elif provider == "anthropic":
-        result = chat_anthropic(history)
+        result = chat_anthropic(messages_for_llm)
     else:
-        result = chat_gemini(history)
+        result = chat_gemini(messages_for_llm)
 
     if "content" in result:
         history.append({"role": "assistant", "content": result["content"]})

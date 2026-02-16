@@ -58,6 +58,37 @@ Este framework incluye herramientas para facilitar tareas comunes:
 - **`update_template.yaml`**: Directiva para traer actualizaciones desde el repositorio plantilla original.
 - **`deploy_to_github.yaml`**: Automatiza el flujo de git add/commit/push para reportar avances.
 
+## Control Remoto vía Telegram
+Este framework permite controlar al agente desde tu móvil usando Telegram.
+
+### Configuración
+1.  **Crear el Bot**:
+    - Abre Telegram y busca a **@BotFather**.
+    - Envía `/newbot` y sigue las instrucciones.
+    - Copia el **HTTP API Token** generado.
+
+2.  **Obtener tu Chat ID**:
+    - Añade el `TELEGRAM_BOT_TOKEN` al archivo `.env`.
+    - Envía un mensaje (ej. "Hola") a tu nuevo bot en Telegram.
+    - Ejecuta: `python execution/telegram_tool.py --action get-id`
+    - Copia el ID que aparece en pantalla.
+
+3.  **Actualizar .env**:
+    Añade las siguientes líneas a tu archivo `.env`:
+    ```env
+    TELEGRAM_BOT_TOKEN=tu_token_aqui
+    TELEGRAM_CHAT_ID=tu_id_numerico_aqui
+    ```
+
+### Comandos Disponibles
+Una vez activado el modo escucha (`/telegram` en el CLI), puedes usar:
+- **Chat normal**: Habla con el agente para consultas generales.
+- **`/investigar [tema]`**: El agente buscará en internet y te dará un resumen (ej. `/investigar últimas noticias de IA`).
+- **`/recordar [texto]`**: Guarda una nota en la memoria a largo plazo del agente.
+- **`/memorias`**: Muestra una lista de los últimos recuerdos almacenados.
+- **`/olvidar [ID]`**: Elimina un recuerdo específico usando su ID.
+- **`/ayuda`**: Muestra la lista de comandos disponibles.
+
 ## Reportar Avances (Git)
 Para guardar tu trabajo y subirlo a GitHub, puedes usar la herramienta de despliegue incluida:
 

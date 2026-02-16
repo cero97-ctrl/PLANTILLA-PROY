@@ -6,6 +6,12 @@ import json
 import glob
 import shutil
 
+try:
+    import yaml
+except ImportError:
+    yaml = None
+    print("⚠️  PyYAML no instalado. La descripción de directivas será limitada.", file=sys.stderr)
+
 # Añadir el directorio actual al path para importar chat_with_llm
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -29,7 +35,18 @@ def main():
     directives = []
     if os.path.exists(directives_dir):
         for f in glob.glob(os.path.join(directives_dir, "*.yaml")):
-            directives.append(os.path.basename(f))
+            filename = os.path.basename(f)
+            description = ""
+            if yaml:
+                try:
+                    with open(f, 'r', encoding='utf-8') as yf:
+                        data = yaml.safe_load(yf)
+                        description = data.get('goal', 'Sin descripción')
+                except Exception as e:
+                    description = f"(Error leyendo YAML: {e})"
+            
+            entry = f"- **{filename}**: {description}" if description else f"- {filename}"
+            directives.append(entry)
 
     structure = []
     # Escaneo limitado de estructura para dar contexto al LLM
@@ -58,7 +75,7 @@ ESTRUCTURA DE ARCHIVOS (Resumen):
 {structure_str}
 
 DIRECTIVAS DISPONIBLES (Capacidades del Agente):
-{', '.join(directives)}
+{chr(10).join(directives)}
 
 REQUISITOS:
 1. Usa formato Markdown estándar.

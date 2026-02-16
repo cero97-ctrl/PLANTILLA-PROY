@@ -1,0 +1,14 @@
+goal: "Analizar y describir el contenido de una imagen proporcionada localmente."
+required_inputs:
+  - name: "image_path"
+    description: "Ruta al archivo de imagen."
+  - name: "prompt"
+    description: "Pregunta o instrucción sobre la imagen."
+steps:
+  - step: 1
+    script_to_invoke: "execution/analyze_image.py"
+    inputs:
+      - name: "--image"
+        value: "{{image_path}}"
+      - name: "--prompt"
+        value: "{{prompt}}"

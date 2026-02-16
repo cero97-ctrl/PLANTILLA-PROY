@@ -68,9 +68,11 @@ def main():
             elif user_input.lower() in ["/help", "help"]:
                 print(f"\n{Colors.BOLD}Comandos Disponibles:{Colors.ENDC}")
                 print("  /list    -> Listar todas las directivas disponibles")
+                print("  /memory  -> Listar los recuerdos guardados en la memoria")
                 print("  /check   -> Verificar salud del sistema")
                 print("  /run [script] [args] -> Ejecutar un script específico")
                 print("  /ask [prompt] -> Consultar al LLM real (OpenAI/Anthropic)")
+                print("  /telegram -> Iniciar modo escucha de Telegram (Bot)")
                 print("  [texto]  -> Simular chat (echo)\n")
 
             elif user_input.lower() in ["/list", "list"]:
@@ -78,6 +80,12 @@ def main():
 
             elif user_input.lower() in ["/check", "check"]:
                 run_script("check_system_health.py")
+
+            elif user_input.lower() in ["/memory", "/memories"]:
+                run_script("list_memories.py")
+
+            elif user_input.lower() in ["/telegram", "telegram"]:
+                run_script("listen_telegram.py")
 
             elif user_input.lower().startswith("/run"):
                 parts = user_input.split()

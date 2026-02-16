@@ -1,64 +1,87 @@
 #!/usr/bin/env python3
-import os
 import sys
-import json
+import os
+import importlib.util
 
+def check_python_version():
+    required_version = (3, 10)
+    current_version = sys.version_info
+    if current_version < required_version:
+        print(f"❌ Python {required_version[0]}.{required_version[1]}+ requerido. Tienes {current_version.major}.{current_version.minor}")
+        return False
+    print(f"✅ Python {current_version.major}.{current_version.minor} detectado.")
+    return True
+
+def check_env_file():
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    if not os.path.exists(env_path):
+        print("❌ Archivo .env no encontrado. Ejecuta 'cp .env.example .env' o crea uno.")
+        return False
+    
+    # Verificar contenido básico
+    has_keys = False
+    with open(env_path, 'r') as f:
+        content = f.read()
+        if "API_KEY" in content:
+            has_keys = True
+    
+    if has_keys:
+        print("✅ Archivo .env encontrado y parece configurado.")
+    else:
+        print("⚠️  Archivo .env existe pero no parece tener API KEYS configuradas.")
+    return True
+
+def check_directories():
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    required_dirs = ["directives", "execution", ".gemini", ".tmp"]
+    missing = []
+    for d in required_dirs:
+        if not os.path.exists(os.path.join(root, d)):
+            missing.append(d)
+    
+    if missing:
+        print(f"❌ Directorios faltantes: {', '.join(missing)}")
+        # Intentar crear .tmp si falta, ya que es temporal
+        if ".tmp" in missing:
+            os.makedirs(os.path.join(root, ".tmp"))
+            print("   🔧 Directorio .tmp/ recreado automáticamente.")
+            missing.remove(".tmp")
+        
+        if missing: return False
+    
+    print("✅ Estructura de directorios correcta.")
+    return True
+
+def check_dependencies():
+    # Lista de importaciones críticas para el funcionamiento base
+    libs = ["dotenv", "yaml", "requests", "chromadb", "google.generativeai"]
+    missing = []
+    for lib in libs:
+        if importlib.util.find_spec(lib) is None:
+            missing.append(lib)
+    
+    if missing:
+        print(f"❌ Dependencias faltantes: {', '.join(missing)}")
+        print("   Ejecuta: pip install -r requirements.txt")
+        return False
+    print("✅ Dependencias críticas detectadas.")
+    return True
 
 def main():
-    """
-    Valida la integridad del sistema verificando que la estructura de carpetas
-    y archivos esenciales existan.
-    """
-    # Determinar la raíz del proyecto (asumiendo que este script está en execution/)
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(script_dir)
-
-    # Definir la estructura esperada según la arquitectura
-    required_structure = {
-        "directories": [
-            "directives",
-            "execution",
-            ".tmp",
-            ".gemini"
-        ],
-        "files": [
-            ".env",
-            "README.md",
-            "execution/alert_user.py"
-        ]
-    }
-
-    health_report = {
-        "status": "ok",
-        "checks": {},
-        "errors": []
-    }
-
-    # 1. Validar Directorios
-    for directory in required_structure["directories"]:
-        path = os.path.join(project_root, directory)
-        if os.path.isdir(path):
-            health_report["checks"][directory] = "ok"
-        else:
-            health_report["checks"][directory] = "missing"
-            health_report["errors"].append(f"Falta el directorio: {directory}")
-
-    # 2. Validar Archivos
-    for filename in required_structure["files"]:
-        path = os.path.join(project_root, filename)
-        if os.path.isfile(path):
-            health_report["checks"][filename] = "ok"
-        else:
-            health_report["checks"][filename] = "missing"
-            health_report["errors"].append(f"Falta el archivo: {filename}")
-
-    # 3. Emitir resultado
-    is_healthy = len(health_report["errors"]) == 0
-    health_report["status"] = "ok" if is_healthy else "error"
-
-    print(json.dumps(health_report, indent=2))
-    sys.exit(0 if is_healthy else 1)
-
+    print("🔍 Iniciando Chequeo de Salud del Sistema...\n")
+    checks = [
+        check_python_version(),
+        check_directories(),
+        check_env_file(),
+        check_dependencies()
+    ]
+    
+    if all(checks):
+        print("\n🚀 Todo listo. El sistema está saludable.")
+        sys.exit(0)
+    else:
+        print("\n⚠️  Se encontraron problemas. Revisa los logs anteriores.")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
