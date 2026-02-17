@@ -123,13 +123,19 @@ def get_chat_id():
             
             results = data.get("result", [])
             if results:
-                # Obtener el último mensaje
-                last_update = results[-1]
-                chat_info = last_update.get("message", {}).get("chat", {})
-                chat_id = chat_info.get("id")
-                username = chat_info.get("username", "Desconocido")
+                # Procesar los últimos mensajes para obtener IDs únicos
+                users = {}
+                for update in reversed(results): # Empezar por el más reciente
+                    chat_info = update.get("message", {}).get("chat", {})
+                    chat_id = chat_info.get("id")
+                    if chat_id and chat_id not in users:
+                        username = chat_info.get("username", "N/A")
+                        first_name = chat_info.get("first_name", "Usuario")
+                        users[chat_id] = f"{first_name} (@{username})"
                 
-                print(json.dumps({"status": "success", "chat_id": chat_id, "username": username, "message": "Copia este ID en tu archivo .env"}))
+                user_list = [{"id": uid, "name": name} for uid, name in users.items()]
+                
+                print(json.dumps({"status": "success", "users": user_list, "message": "Copia el ID del estudiante que necesites."}))
                 return
             
             time.sleep(2) # Esperar 2 segundos antes de reintentar
@@ -138,7 +144,7 @@ def get_chat_id():
             print(json.dumps({"status": "error", "message": str(e)}))
             sys.exit(1)
             
-    print(json.dumps({"status": "error", "message": "No se encontraron mensajes. Asegúrate de enviar 'Hola' a tu bot (@CERO97BOT) ANTES de ejecutar esto."}))
+    print(json.dumps({"status": "error", "message": "No se encontraron mensajes recientes. Pide al estudiante que envíe 'Hola' a tu bot ANTES de ejecutar esto."}))
     sys.exit(1)
 
 def download_file(file_id, dest_path):

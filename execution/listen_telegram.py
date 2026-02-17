@@ -263,7 +263,7 @@ Resultados de Búsqueda:
                             "🔹 `/memorias`: Lista tus últimos recuerdos guardados.\n"
                             "🔹 `/olvidar [ID]`: Borra un recuerdo específico.\n"
                             "🔹 `/broadcast [msg]`: Envía un mensaje a todos (Admin).\n"
-                            "🔹 `/ayuda`: Muestra este menú.\n"
+                            "🔹 `/ayuda`: Muestra este menú.\n\n"
                             "🔹 *Chat normal*: Háblame y te responderé."
                         )
 
