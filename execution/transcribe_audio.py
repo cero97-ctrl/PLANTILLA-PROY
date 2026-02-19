@@ -3,46 +3,49 @@ import argparse
 import json
 import sys
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 try:
-    import google.generativeai as genai
+    import speech_recognition as sr
+    from pydub import AudioSegment
 except ImportError:
-    print(json.dumps({"status": "error", "message": "Librería google-generativeai no instalada."}))
+    print(json.dumps({"status": "error", "message": "Faltan librerías. Ejecuta: pip install SpeechRecognition pydub"}))
     sys.exit(1)
 
 def main():
-    parser = argparse.ArgumentParser(description="Transcribe audio usando Gemini.")
-    parser.add_argument("--file", required=True, help="Ruta del archivo de audio.")
+    parser = argparse.ArgumentParser(description="Transcribir archivo de audio a texto.")
+    parser.add_argument("--file", required=True, help="Ruta al archivo de audio.")
+    parser.add_argument("--lang", default="es-ES", help="Código de idioma (ej: es-ES, en-US).")
     args = parser.parse_args()
 
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        print(json.dumps({"status": "error", "message": "Falta GOOGLE_API_KEY."}))
+    if not os.path.exists(args.file):
+        print(json.dumps({"status": "error", "message": "Archivo no encontrado"}))
         sys.exit(1)
 
-    genai.configure(api_key=api_key)
-
+    # Convertir OGG (Telegram) a WAV (Requerido por SpeechRecognition)
+    wav_path = args.file + ".wav"
     try:
-        # Subir archivo a la API de Gemini
-        audio_file = genai.upload_file(path=args.file)
-        
-        # Usar modelo Flash que es rápido y multimodal
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        # Prompt para transcripción fiel
-        response = model.generate_content([
-            "Transcribe este audio exactamente como se escucha. Si es una instrucción para un bot, transcríbela tal cual.",
-            audio_file
-        ])
-        
-        print(json.dumps({"status": "success", "text": response.text.strip()}))
-        
+        audio = AudioSegment.from_file(args.file)
+        audio.export(wav_path, format="wav")
+    except Exception as e:
+        print(f"Error pydub/ffmpeg: {e}", file=sys.stderr)
+        print(json.dumps({"status": "error", "message": f"Error convirtiendo audio (¿Tienes ffmpeg instalado?): {e}"}))
+        sys.exit(1)
+
+    r = sr.Recognizer()
+    try:
+        with sr.AudioFile(wav_path) as source:
+            # Escuchar el archivo
+            audio_data = r.record(source)
+            # Transcribir usando Google Web Speech API (Gratis, soporta español)
+            text = r.recognize_google(audio_data, language=args.lang)
+            print(json.dumps({"status": "success", "text": text}))
+    except sr.UnknownValueError:
+        print(json.dumps({"status": "error", "message": "No se pudo entender el audio."}))
     except Exception as e:
         print(json.dumps({"status": "error", "message": str(e)}))
-        sys.exit(1)
+    finally:
+        if os.path.exists(wav_path):
+            os.remove(wav_path)
 
 if __name__ == "__main__":
     main()

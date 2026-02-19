@@ -82,6 +82,26 @@ def send_document(file_path, target_chat_id=None, caption=""):
         print(json.dumps({"status": "error", "message": str(e)}))
         sys.exit(1)
 
+def send_voice(file_path, target_chat_id=None):
+    """Envía una nota de voz (.ogg)."""
+    dest_id = target_chat_id or CHAT_ID
+    if not TOKEN or not dest_id:
+        print(json.dumps({"status": "error", "message": "Faltan credenciales o Chat ID destino."}))
+        sys.exit(1)
+    
+    url = f"https://api.telegram.org/bot{TOKEN}/sendVoice"
+    
+    try:
+        with open(file_path, 'rb') as voice_file:
+            files = {'voice': voice_file}
+            data = {'chat_id': dest_id}
+            response = requests.post(url, files=files, data=data, timeout=40)
+            response.raise_for_status()
+            print(json.dumps({"status": "success", "message": "Nota de voz enviada."}))
+    except Exception as e:
+        print(json.dumps({"status": "error", "message": str(e)}))
+        sys.exit(1)
+
 def check_messages():
     """Consulta nuevos mensajes (polling) manteniendo el estado del offset."""
     if not TOKEN:
@@ -145,6 +165,10 @@ def check_messages():
                     # Solo procesamos PDFs por ahora
                     if "pdf" in mime_type or file_name.lower().endswith(".pdf"):
                         messages.append(f"{msg_chat_id}|__DOCUMENT__:{file_id}|||{file_name}|||{caption}")
+                elif message.get("voice"):
+                    voice = message["voice"]
+                    file_id = voice["file_id"]
+                    messages.append(f"{msg_chat_id}|__VOICE__:{file_id}")
         
         # Guardar nuevo offset para no repetir mensajes
         if max_update_id > offset:
@@ -230,7 +254,7 @@ def download_file(file_id, dest_path):
 
 def main():
     parser = argparse.ArgumentParser(description="Herramienta de integración con Telegram.")
-    parser.add_argument("--action", choices=["send", "check", "get-id", "download", "send-photo", "send-document"], required=True, help="Acción a realizar.")
+    parser.add_argument("--action", choices=["send", "check", "get-id", "download", "send-photo", "send-document", "send-voice"], required=True, help="Acción a realizar.")
     parser.add_argument("--message", help="Mensaje a enviar (requerido para --action send).")
     parser.add_argument("--chat-id", help="ID del chat destino (opcional, por defecto usa el del .env).")
     parser.add_argument("--file-id", help="ID del archivo a descargar (para --action download).")
@@ -252,6 +276,11 @@ def main():
             print(json.dumps({"status": "error", "message": "Falta argumento --file-path"}))
             sys.exit(1)
         send_document(args.file_path, args.chat_id, args.caption or "")
+    elif args.action == "send-voice":
+        if not args.file_path:
+            print(json.dumps({"status": "error", "message": "Falta argumento --file-path"}))
+            sys.exit(1)
+        send_voice(args.file_path, args.chat_id)
     elif args.action == "check":
         check_messages()
     elif args.action == "get-id":

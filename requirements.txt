@@ -7,6 +7,8 @@ psutil
 pytest
 PyAudio
 python-dotenv
+gTTS
+pydub
 SpeechRecognition
 PyYAML
 requests

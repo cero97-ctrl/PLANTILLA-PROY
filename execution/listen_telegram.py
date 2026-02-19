@@ -12,13 +12,15 @@ load_dotenv()
 USERS_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".tmp", "telegram_users.txt")
 REMINDERS_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".tmp", "telegram_reminders.json")
 PERSONA_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".tmp", "telegram_persona.txt")
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".tmp", "telegram_config.json")
 
 PERSONAS = {
     "default": "Eres un asistente de IA creado por el Prof. César Rodríguez con Gemini Code Assist. Tu propósito es apoyar a estudiantes de informática y al equipo de investigación 'Tecnología Venezolana'. Resides en una PC con GNU/Linux. Responde de forma amable, clara y concisa, y si te preguntan quién eres, menciona estos detalles.",
     "serio": "Eres un asistente corporativo, extremadamente formal y serio. No usas emojis ni coloquialismos. Vas directo al grano.",
     "sarcastico": "Eres un asistente con humor negro y sarcasmo. Te burlas sutilmente de las preguntas obvias, pero das la respuesta correcta al final.",
     "profesor": "Eres un profesor universitario paciente y didáctico. Explicas todo con ejemplos, analogías y un tono educativo.",
-    "pirata": "¡Arrr! Eres un pirata informático de los siete mares. Usas jerga marinera y pirata en todas tus respuestas."
+    "pirata": "¡Arrr! Eres un pirata informático de los siete mares. Usas jerga marinera y pirata en todas tus respuestas.",
+    "frances": "Tu es un assistant IA créé par le Prof. César Rodríguez. Tu résides sur un PC GNU/Linux. Réponds toujours en français, de manière gentille, claire et concise."
 }
 
 def get_current_persona():
@@ -50,6 +52,19 @@ def load_reminders():
         except:
             return []
     return []
+
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_config(config):
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f)
 
 def save_reminders(reminders):
     with open(REMINDERS_FILE, 'w') as f:
@@ -124,6 +139,8 @@ def main():
                     
                     reply_text = ""
                     msg = content # Usamos el contenido limpio para la lógica
+                    is_voice_interaction = False # Bandera para saber si responder con audio
+                    voice_lang_short = "es" # Default language for TTS
                     
                     # --- COMANDOS ESPECIALES (Capa 3: Ejecución) ---
                     
@@ -219,15 +236,22 @@ TAREA:
                     # 1.5 DETECCIÓN DE VOZ
                     elif msg.startswith("__VOICE__:"):
                         try:
+                            is_voice_interaction = True
                             file_id = msg.replace("__VOICE__:", "")
                             print(f"   🎤 Nota de voz recibida. Descargando ID: {file_id}...")
+
                             run_tool("telegram_tool.py", ["--action", "send", "--message", "👂 Escuchando...", "--chat-id", sender_id])
                             
                             local_path = os.path.join(".tmp", f"voice_{int(time.time())}.ogg")
                             run_tool("telegram_tool.py", ["--action", "download", "--file-id", file_id, "--dest", local_path])
                             
                             # Transcribir
-                            res = run_tool("transcribe_audio.py", ["--file", local_path])
+                            # Cargar idioma configurado (default es-ES)
+                            config = load_config()
+                            lang_code = config.get("voice_lang", "es-ES")
+                            voice_lang_short = lang_code.split('-')[0] # 'es-ES' -> 'es'
+                            
+                            res = run_tool("transcribe_audio.py", ["--file", local_path, "--lang", lang_code])
                             if res and res.get("status") == "success":
                                 text = res.get("text")
                                 print(f"   📝 Transcripción: '{text}'")
@@ -235,7 +259,8 @@ TAREA:
                                 msg = text
                                 run_tool("telegram_tool.py", ["--action", "send", "--message", f"🗣️ Dijiste: \"{text}\"", "--chat-id", sender_id])
                             else:
-                                reply_text = "❌ No pude entender el audio."
+                                err_msg = res.get("message", "Error desconocido") if res else "Falló el script de transcripción"
+                                reply_text = f"❌ No pude entender el audio. Detalle: {err_msg}"
                         except Exception as e:
                             reply_text = f"❌ Error procesando audio: {e}"
 
@@ -372,6 +397,19 @@ IMPORTANTE:
                         else:
                             save_reminders(reminders_to_keep)
                             reply_text = "✅ Todos tus recordatorios han sido eliminados."
+
+                    elif msg.startswith("/idioma") or msg.startswith("/lang"):
+                        parts = msg.split(" ")
+                        if len(parts) < 2:
+                            reply_text = "⚠️ Uso: /idioma [es/en]\nEj: `/idioma en` (para inglés)"
+                        else:
+                            lang_map = {"es": "es-ES", "en": "en-US", "fr": "fr-FR", "pt": "pt-BR"}
+                            selection = parts[1].lower()
+                            code = lang_map.get(selection, "es-ES")
+                            config = load_config()
+                            config["voice_lang"] = code
+                            save_config(config)
+                            reply_text = f"✅ Idioma de voz cambiado a: `{code}`.\nAhora te escucharé en ese idioma."
 
                     elif msg.startswith("/ayuda_medica"):
                         manual_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "manual_medico.pdf")
@@ -592,6 +630,7 @@ IMPORTANTE:
                             "🔹 `/investigar [tema]`: Busca en internet y resume.\n"
                             "🔹 `/reporte [tema]`: Genera un informe médico/técnico detallado en docs/.\n"
                             "🔹 `/recordatorio [hora] [msg]`: Configura una alarma diaria.\n"
+                            "🔹 `/idioma [es/en]`: Cambia el idioma en el que te escucho.\n"
                             "🔹 `/borrar_recordatorios`: Elimina todas tus alarmas.\n"
                             "🔹 `/ayuda_medica`: Envía el manual de uso médico en PDF.\n"
                             "🔹 `/resumir [url]`: Lee una web y te dice de qué trata.\n"
@@ -671,6 +710,15 @@ IMPORTANTE:
                         # buscar en la memoria e inyectar el contexto si es relevante.
                         print("   🤔 Consultando al Agente (con memoria)...")
                         current_sys = get_current_persona()
+                        
+                        # Inyectar fecha y hora actual para que el LLM lo sepa
+                        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        current_sys += f"\n[Contexto Temporal: Fecha y Hora actual del servidor: {now_str}]"
+
+                        # Si la interacción fue por voz, instruir al LLM que responda en ese idioma
+                        if is_voice_interaction and voice_lang_short != "es":
+                            current_sys += f"\nIMPORTANT: The user is speaking in '{voice_lang_short}'. You MUST respond in '{voice_lang_short}', regardless of your default instructions."
+
                         llm_response = run_tool("chat_with_llm.py", ["--prompt", msg, "--system", current_sys])
                         
                         if llm_response and "content" in llm_response:
@@ -685,6 +733,15 @@ IMPORTANTE:
                         res = run_tool("telegram_tool.py", ["--action", "send", "--message", reply_text, "--chat-id", sender_id])
                         if res and res.get("status") == "error":
                             print(f"   ❌ Error al enviar mensaje: {res.get('message')}")
+                        
+                        # 4. Si fue interacción por voz, enviar también audio
+                        if is_voice_interaction and reply_text:
+                            print("   🗣️ Generando respuesta de voz...")
+                            audio_path = os.path.join(".tmp", f"reply_{int(time.time())}.ogg")
+                            # Generar audio
+                            tts_res = run_tool("text_to_speech.py", ["--text", reply_text[:500], "--output", audio_path, "--lang", voice_lang_short]) # Limitamos a 500 chars para no hacerlo eterno
+                            if tts_res and tts_res.get("status") == "success":
+                                run_tool("telegram_tool.py", ["--action", "send-voice", "--file-path", audio_path, "--chat-id", sender_id])
             
             # --- TAREA DE FONDO: RECORDATORIOS ---
             check_reminders()
